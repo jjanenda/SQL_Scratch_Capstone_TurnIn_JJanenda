@@ -1,0 +1,130 @@
+--John Janenda
+--Learn SQL from Scratch
+--SQL Queries used in Capstone Project
+--CoolTShirts Project
+
+--2. Count campaigns and sources, then match
+-- get COUNT of campaigns
+SELECT COUNT(DISTINCT utm_campaign) AS 'Campaign Count'
+FROM page_visits;
+
+--get COUNT of sources
+SELECT COUNT(DISTINCT utm_source) AS 'Source Count'
+FROM page_visits;
+
+--list sources per campaign to show relationship
+SELECT DISTINCT utm_campaign as Campaigns,
+		  utm_source as Sources
+FROM page_visits;
+--3. find unique pages that are on website
+SELECT DISTINCT page_name AS ‘Page Names’
+FROM page_visits;
+
+-- 5. COUNT first touches per campaign
+-- Create temp table that finds first touches by user id
+WITH first_touch AS (
+    SELECT user_id,
+        MIN(timestamp) AS first_touch_at
+    FROM page_visits
+    GROUP BY user_id),
+--Create 2nd temp table that adds source and 
+--campaign FROM page_visits and joins them on 
+--user id and timestamp
+ft_attr AS (
+  SELECT ft.user_id,
+         ft.first_touch_at,
+         pv.utm_source,
+         pv.utm_campaign
+  FROM first_touch ft
+  JOIN page_visits pv
+    ON ft.user_id = pv.user_id
+    AND ft.first_touch_at = pv.timestamp
+)
+--SELECT and COUNT Rows WHERE first touch is 
+--associated with a campaign and source
+SELECT ft_attr.utm_source AS Source,
+       ft_attr.utm_campaign AS Campaign,
+       COUNT(*) AS COUNT
+FROM ft_attr
+GROUP BY 1, 2
+ORDER BY 3 DESC;
+
+-- 6. COUNT last touches per campaign
+-- Create temp table that finds LAST touches by user id
+WITH last_touch AS (
+    SELECT user_id,
+        MAX(timestamp) AS last_touch_at
+    FROM page_visits
+    GROUP BY user_id),
+--Create 2nd temp table that adds source and 
+--campaign FROM page_visits and joins them on 
+--user id and timestamp
+ft_attr AS (
+  SELECT lt.user_id,
+         lt.last_touch_at,
+         pv.utm_source,
+         pv.utm_campaign
+  FROM last_touch lt
+  JOIN page_visits pv
+    ON lt.user_id = pv.user_id
+    AND lt.last_touch_at = pv.timestamp
+)
+--Select and count rows where first touch is 
+--associated with a campaign and source
+SELECT ft_attr.utm_source AS Source,
+       ft_attr.utm_campaign AS Campaign,
+       COUNT(*) AS Count
+FROM ft_attr
+GROUP BY 1, 2
+ORDER BY 3 DESC;
+
+-- 7. COUNT DISTINCT users who made a purchase
+SELECT COUNT(DISTINCT user_id) AS 'Customers that Purchase'
+FROM page_visits
+WHERE page_name = '4 - purchase';
+
+-- 8. COUNT last touches per campaign that led to a purchase
+-- Create temp table that finds LAST touches by user id
+WITH last_touch AS (
+    SELECT user_id,
+        MAX(timestamp) AS last_touch_at
+    FROM page_visits
+--add WHERE clause   
+  WHERE page_name = '4 - purchase'
+    GROUP BY user_id),
+--Create 2nd temp table that adds source and 
+--campaign FROM page_visits and joins them on 
+--user id and timestamp
+ft_attr AS (
+  SELECT lt.user_id,
+         lt.last_touch_at,
+         pv.utm_source,
+         pv.utm_campaign
+  FROM last_touch lt
+  JOIN page_visits pv
+    ON lt.user_id = pv.user_id
+    AND lt.last_touch_at = pv.timestamp
+)
+--SELECT and COUNT Rows WHERE first touch is 
+--associated with a campaign and source
+SELECT ft_attr.utm_source AS Source,
+       ft_attr.utm_campaign AS Campaign,
+       COUNT(*) AS COUNT
+FROM ft_attr
+GROUP BY 1, 2
+ORDER BY 3 DESC;
+
+--Extra: determine if a specific source is better than others for generating traffic
+SELECT utm_source as Source, 
+			COUNT(DISTINCT user_id) as 'Visit Count'
+FROM page_visits
+GROUP BY 1
+ORDER BY 2 DESC;
+
+--Extra:identify how many times newsletter sent to same user
+SELECT user_id AS 'User ID',
+			 COUNT(utm_campaign) AS 'Times Received Campaign'
+FROM page_visits
+WHERE utm_campaign = 'weekly-newsletter'
+GROUP BY 1
+ORDER BY 2 DESC;
